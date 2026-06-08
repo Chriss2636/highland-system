@@ -6,6 +6,9 @@ require('dotenv').config();
 const app = express();
 const prisma = new PrismaClient();
 
+const fs = require('fs');
+const path = require('path');
+
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = "highland_secret_key_2026"; // In a real app, put this in .env
@@ -1930,6 +1933,24 @@ app.delete('/api/notifications/:id', authenticateToken, async (req, res) => {
 
 // Server Listen
 const PORT = process.env.PORT || 5000;
+
+// If a built client app exists (Vite -> /client/dist), serve it as static files
+const clientDist = path.join(__dirname, '..', 'client', 'dist');
+if (fs.existsSync(clientDist)) {
+  app.use(express.static(clientDist));
+
+  // Serve index.html at root
+  app.get('/', (req, res) => {
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+
+  // SPA fallback for non-API routes
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/')) return next();
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+}
+
 // Bind to 0.0.0.0 so the server is reachable from other hosts (containers, VMs)
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Highland API operational on port ${PORT}`);
