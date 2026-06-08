@@ -1,0 +1,235 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Client {
+  id        String    @id @default(cuid())
+  name      String
+  email     String?   @unique
+  phone     String?
+  type      String    @default("buyer") // 'buyer' or 'seller'
+  address   String?
+  city      String?
+  state     String?
+  zipCode   String?
+  createdAt DateTime  @default(now())
+
+  // Relations
+  invoices   Invoice[]
+  receipts   Receipt[]
+  agreements Agreement[]
+  projects   Project[]   
+}
+
+model Lead {
+  id                String   @id @default(cuid())
+  fullName          String
+  phone             String
+  presentLocation   String
+  dateToVisit       DateTime
+  numSitesToVisit   Int
+  locationToVisit   String
+  alreadyVisited    Boolean  @default(false)
+  visitedSitesCount Int      @default(0)
+  createdById       String?
+  createdByName     String?
+  createdAt         DateTime @default(now())
+
+  createdBy         User?    @relation(fields: [createdById], references: [id])
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  location    String   
+  description String?
+  details     String   // Stores the plot JSON string
+  mapUrl      String?  // Stores the Base64 image of the plot map
+  sellerId    String
+  seller      Client   @relation(fields: [sellerId], references: [id])
+  invoices    Invoice[]
+  createdAt   DateTime @default(now())
+}
+
+model Invoice {
+  id          String   @id @default(cuid())
+  invoiceNo   String   @unique
+  amount      Float
+  sqm         Float?
+  plotInfo    String?
+  comments    String?  @default("Monthly installment")
+  invoiceDate DateTime @default(now())
+  
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id])
+  
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id])
+  
+  receipts    Receipt[]
+}
+
+model Receipt {
+  id            String   @id @default(cuid())
+  receiptNo     String   @unique
+  amount        Float
+  paymentMethod String   @default("Bank Transfer")
+  plotNumber    String?
+  description   String?  @default("Property Acquisition")
+  
+  buyerName     String
+  buyerPhone    String?
+  referenceCode String?
+
+  clientId      String?  
+  client        Client?  @relation(fields: [clientId], references: [id])
+  
+  invoiceId     String?  
+  invoice       Invoice? @relation(fields: [invoiceId], references: [id])
+  
+  createdAt     DateTime @default(now())
+}
+
+model Agreement {
+  id          String   @id @default(cuid())
+  type        String   @default("Sale") 
+  plotNo      String
+  block       String?
+  size        String
+  price       Float
+  priceWords  String   
+  location    String   @default("Dodoma")
+  clauses     String   // SQLite stores JSON arrays as Strings
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model User {
+  id               String   @id @default(cuid())
+  fullName         String
+  email            String   @unique
+  password         String
+  role             String   @default("staff") 
+  status           String   @default("active")
+  securityQuestion String?
+  securityQuestions String?
+  securityAnswer   String?
+  securityAnswers  String?
+  
+  // New Profile Fields
+  avatar           String?  // Base64 Image
+  phone            String?
+  tinNumber        String?
+  passport         String?  // Base64 Image or passport file
+  
+  // Bank Details
+  bankName         String?
+  bankAccountName  String?
+  bankAccountNumber String?
+  
+  // Next of Kin (Emergency)
+  kinName          String?
+  kinRelation      String?
+  kinPhone         String?
+  
+  // Logic Flag
+  isProfileComplete Boolean @default(false)
+
+  leads            Lead[]
+  notifications    Notification[]
+  createdAt        DateTime @default(now())
+}
+
+model DailyReport {
+  id             String   @id @default(cuid())
+  date           DateTime @default(now())
+  arrivalTime    String
+  salesTeam      String
+  teamLeader     String
+  mainActivities String
+  clientProgress String
+  siteVisit      String
+  tomorrowPlan   String
+  status         String   @default("submitted")
+  comments       String?  // SQLite stores JSON as Strings
+  createdBy      String?  // Staff who created the report
+  submittedAt    DateTime @default(now())
+  assistantDirectorComments String?
+  assistantDirectorApprovedAt DateTime?
+  generalDirectorComments String?
+  generalDirectorApprovedAt DateTime?
+  financeManagerComments String?
+  financeManagerApprovedAt DateTime?
+  finalComments String?
+  finalApprovedAt DateTime?
+  workflowStatus   String   @default("pending_assistant") // pending_assistant, pending_director, director_approved, pending_financial, financial_approved, final_approved, rejected
+  createdAt      DateTime @default(now())
+}
+
+model Requisition {
+  id                   String   @id @default(cuid())
+  projectName          String   // Manual input now
+  cashRequestedBy      String
+  department           String   @default("Operations")
+  amount               Float
+  amountWords          String
+  purpose              String   
+  paymentCodes         String?
+  preparedBy           String
+  preparedByDate       DateTime @default(now())
+  assistantName        String?
+  assistantDate        DateTime?
+  directorName         String?
+  directorDate         DateTime?
+  financeName          String?
+  financeDate          DateTime?
+  status               String   @default("pending_assistant") 
+  createdAt            DateTime @default(now())
+}
+
+model CustomerSMS {
+  id              String   @id @default(cuid())
+  fullName        String
+  location        String
+  phone           String   // Must start with +255
+  category        String   // Boost Adds, Tenting to Offices, Flying
+  message         String?  @default("")
+  status          String   @default("Draft") // Draft, Written, Approved, Sent
+  isPublic        Boolean  @default(false)
+  preparedBy      String   // Staff Name
+  writtenBy       String?  // Assistant Director Name
+  approvedBy      String?  // General Director Name
+  sentBy          String?  // Admin Name
+  createdAt       DateTime @default(now())
+}
+
+model CompanySetting {
+  id           String  @id @default("global") 
+  name         String  @default("Highland Property Ltd")
+  tin          String?
+  address      String?
+  phone        String?
+  email        String?
+  bankName     String?
+  bankAccount  String?
+  logoUrl      String?
+  smsApiKey    String? 
+  smsSecret    String?
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   @default("info") // "info", "success", "warning", "error"
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  readAt    DateTime?
+}

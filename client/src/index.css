@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+/* Make wide tables scrollable on small screens */
+@media (max-width: 767px) {
+	main {
+		-webkit-overflow-scrolling: touch;
+		overflow-x: auto;
+	}
+	main table {
+		min-width: 700px;
+	}
+}
+
+/* Slight backdrop blur for mobile bottom nav */
+.backdrop-blur { backdrop-filter: blur(6px); }
